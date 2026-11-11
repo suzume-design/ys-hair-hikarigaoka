@@ -971,3 +971,130 @@ html.js [data-reveal].is-shown {
 .studio-credit__btn:focus-visible { background: #505E18; border-color: #505E18; color: #FFFFFF; }
 
 @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+
+/* ============ 追随バー（スズメデザインへの導線・全サイト共通） ============
+   フッターのクレジット帯は「読み終えた人」にしか届かないので、
+   スクロール中もずっと見えている細い帯をもう1本置く。
+   色は下の変数を JS がクレジット帯の実測値で上書きする（プリセットを問わない）。
+   ・最初の1画面では出さない。ファーストビューは店のデザインだけを見せる
+   ・一度出たら出したまま。スクロール方向では隠さない
+   ・フッターに届いたら退場する。重ならないのでコンテンツ側の padding は要らない
+   ・z-index はヘッダー(50)・モバイルナビ(49)より下 */
+.sdbar {
+  --sdbar-bg:      #F4F4F4;
+  --sdbar-line:    #9A9A9A;
+  --sdbar-lead:    #555555;
+  --sdbar-name:    #111111;
+  --sdbar-btn-bg:  #222222;
+  --sdbar-btn-ink: #FFFFFF;
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 45;
+  display: block;
+  text-decoration: none;
+  background: var(--sdbar-bg);
+  border-top: 2px solid var(--sdbar-line);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.08);
+  padding-bottom: env(safe-area-inset-bottom);   /* iOS のツールバーぶんを逃がす */
+  transform: translateY(110%);
+  opacity: 0;
+  pointer-events: none;
+  /* 出るときも消えるときも、同じ時間・同じカーブでゆっくり */
+  transition: transform 600ms cubic-bezier(0.40, 0.00, 0.20, 1.00),
+              opacity   600ms cubic-bezier(0.40, 0.00, 0.20, 1.00);
+  will-change: transform;
+}
+/* 地色をわずかに透かす。下の文字が気にならない程度に留め、
+   背面をぼかして帯の中の文字の読みやすさは保つ */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)))
+      and (background: color-mix(in srgb, red 50%, transparent)) {
+  .sdbar {
+    background: color-mix(in srgb, var(--sdbar-bg) 90%, transparent);
+    -webkit-backdrop-filter: blur(10px) saturate(1.08);
+    backdrop-filter: blur(10px) saturate(1.08);
+  }
+}
+.sdbar.is-in  { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.sdbar.is-out { transform: translateY(110%); opacity: 0; pointer-events: none; }
+/* ファーストビューの高さを測るための目印。absolute なのでレイアウトを動かさない */
+.sdbar-sentinel {
+  position: absolute; top: 0; left: 0;
+  width: 1px; height: 100vh;
+  pointer-events: none; visibility: hidden;
+}
+.sdbar__inner {
+  max-width: var(--container, 1180px);
+  margin: 0 auto;
+  min-height: 44px;                              /* タップ領域の下限 */
+  padding: 5px clamp(10px, 4vw, 40px);           /* 狭い画面では詰めて折り返させない */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.sdbar__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sdbar__lead {
+  font-size: clamp(9px, 2.9vw, 11px);            /* 狭い画面では字を詰める */
+  line-height: 1.25; letter-spacing: 0;
+  color: var(--sdbar-lead);
+}
+.sdbar__name {
+  font-size: clamp(10px, 3.4vw, 13px);
+  line-height: 1.25; letter-spacing: 0;
+  color: var(--sdbar-name);
+  word-break: keep-all;                          /* 折るなら全角スペースの位置だけ */
+}
+.sdbar__cta {
+  flex-shrink: 0;
+  width: 28px; height: 28px;                     /* スマホは丸。場所を取らせない */
+  border-radius: 999px;
+  background: var(--sdbar-btn-bg);
+  color: var(--sdbar-btn-ink);
+  font-size: 12px; line-height: 1;
+  display: flex; align-items: center; justify-content: center; gap: 0.7em;
+  transition: filter 180ms ease;
+}
+.sdbar__cta-label { display: none; }
+.sdbar__cta-arrow { font-size: 11px; line-height: 1; }
+.sdbar:hover .sdbar__cta,
+.sdbar:focus-visible .sdbar__cta { filter: brightness(1.12); }
+.sdbar:focus-visible { outline: 2px solid var(--sdbar-btn-bg); outline-offset: -4px; }
+
+/* 横長ボタンを置いても1行に収まる幅から横並びにする。
+   768px / 900px では本文＋ボタンが収まらず折り返した（実測）ので 980px */
+@media (min-width: 980px) {
+  .sdbar__inner { min-height: 50px; padding: 6px clamp(20px, 5vw, 56px); justify-content: center; gap: 24px; }
+  .sdbar__text  { flex-direction: row; align-items: baseline; gap: 18px; }
+  .sdbar__lead  { font-size: 12px; letter-spacing: 0.06em; }
+  .sdbar__name  { font-size: 15px; letter-spacing: 0.06em; }
+  .sdbar__cta        { width: auto; height: auto; padding: 9px 22px; letter-spacing: 0.14em; }
+  .sdbar__cta-label  { display: inline; }
+}
+
+/* 動きを減らす設定のとき。テンプレート冒頭に
+   * { transition: none !important } があるので !important で上書きしないと効かない。
+   移動はやめ、唐突に現れないようフェードだけ残す */
+@media (prefers-reduced-motion: reduce) {
+  .sdbar        { transform: none !important; transition: opacity 600ms linear !important; }
+  .sdbar.is-in  { transform: none !important; }
+  .sdbar.is-out { transform: none !important; }
+  .sdbar__cta   { transition: none !important; }
+}
+
+/* ---- クレジット帯：狭い画面で本文とボタンのラベルが折り返していたので詰める ---- */
+@media (max-width: 640px) {
+  .studio-credit__inner { padding-inline: clamp(14px, 5vw, 56px); gap: 14px 24px; }
+  .studio-credit__lead { font-size: clamp(10px, 3.3vw, 12px); letter-spacing: 0; }
+  .studio-credit__name {
+    font-size: clamp(11.5px, 4vw, 15px);
+    letter-spacing: 0.02em;
+    word-break: keep-all;          /* 折るなら全角スペースの位置だけ */
+  }
+  .studio-credit__btn {
+    padding: 11px clamp(12px, 4vw, 26px);
+    font-size: clamp(10px, 3.3vw, 12px);
+    letter-spacing: 0.04em;
+    white-space: nowrap;           /* ラベルを折り返さない */
+  }
+}

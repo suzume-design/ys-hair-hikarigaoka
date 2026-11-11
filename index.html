@@ -442,5 +442,85 @@
 </aside>
 
 <script src="main.js"></script>
+
+<!-- ▼ 追随バー（スズメデザインへの導線）
+     1画面ぶんスクロールしたら下から現れ、フッターに届いたら退場して
+     フッターのクレジット帯に役割を渡す。配色は下のスクリプトが帯から引き継ぐ。 -->
+<a class="sdbar" id="sdBar" href="https://suzumedesign.com/" target="_blank" rel="noopener noreferrer">
+  <span class="sdbar__inner">
+    <span class="sdbar__text">
+      <span class="sdbar__lead">このサイトのデザインを制作しました</span>
+      <span class="sdbar__name">サロン専門ホームページ制作　スズメデザイン</span>
+    </span>
+    <span class="sdbar__cta"><span class="sdbar__cta-label">スズメデザインについて</span><span class="sdbar__cta-arrow" aria-hidden="true">↗</span></span>
+  </span>
+</a>
+<script>
+(function () {
+  var bar = document.getElementById('sdBar');
+  if (!bar) { return; }
+  var q = function (s) { return document.querySelector(s); };
+  var band = q('.studio-credit') || q('.credit-band');
+  var lead = q('.studio-credit__lead') || q('.credit-lead');
+  var name = q('.studio-credit__name') || q('.credit-name');
+  var btn  = q('.studio-credit__btn') || q('.credit-btn');
+
+  /* 配色はクレジット帯の実測値を引き継ぐ。店舗ごとに色を書き分けないで済む */
+  var solid = function (el) {              /* 透明なら祖先をさかのぼる */
+    while (el && el !== document.documentElement) {
+      var c = getComputedStyle(el).backgroundColor;
+      if (c && c !== 'transparent' && c.replace(/\s/g, '') !== 'rgba(0,0,0,0)') { return c; }
+      el = el.parentElement;
+    }
+    return null;
+  };
+  var set = function (k, v) { if (v) { bar.style.setProperty(k, v); } };
+  var paint = function () {
+    if (band) {
+      set('--sdbar-bg', solid(band));
+      var cs = getComputedStyle(band);
+      if ((parseFloat(cs.borderTopWidth) || 0) > 0) { set('--sdbar-line', cs.borderTopColor); }
+      else if (btn) { set('--sdbar-line', solid(btn)); }
+    }
+    if (lead) { set('--sdbar-lead', getComputedStyle(lead).color); }
+    if (name) { set('--sdbar-name', getComputedStyle(name).color); }
+    if (btn)  { set('--sdbar-btn-bg', solid(btn)); set('--sdbar-btn-ink', getComputedStyle(btn).color); }
+  };
+  paint();
+  window.addEventListener('load', paint);   /* CDN 製の CSS が後から来る構成への保険 */
+
+  /* 出入りの判定。scroll イベントだけに頼ると取りこぼすので
+     IntersectionObserver を主にし、スクロール位置の判定を保険に置く */
+  var foot = document.querySelector('footer') || band;
+  var shown = false;
+  var show = function () { if (!shown) { shown = true; bar.classList.add('is-in'); } };
+  var setOut = function (v) { if (shown) { bar.classList.toggle('is-out', !!v); } };
+
+  if ('IntersectionObserver' in window) {
+    var sentinel = document.createElement('div');   /* 高さ100vhの目印。レイアウトには影響しない */
+    sentinel.className = 'sdbar-sentinel';
+    sentinel.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(sentinel);
+    new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (!e.isIntersecting && e.boundingClientRect.top < 0) { show(); } });
+    }).observe(sentinel);
+    if (foot) {
+      new IntersectionObserver(function (es) {
+        es.forEach(function (e) { setOut(e.isIntersecting); });
+      }).observe(foot);
+    }
+  }
+  var update = function () {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    if (y >= window.innerHeight) { show(); }
+    if (foot) { setOut(foot.getBoundingClientRect().top < window.innerHeight); }
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  update();
+})();
+</script>
+<!-- ▲ 追随バー -->
+
 </body>
 </html>
