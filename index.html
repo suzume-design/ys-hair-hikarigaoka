@@ -489,6 +489,29 @@
   paint();
   window.addEventListener('load', paint);   /* CDN 製の CSS が後から来る構成への保険 */
 
+  /* --- 計測（CLAUDE.md §3-7） ---
+     店舗の識別子は GitHub Pages のパス（/<リポジトリ名>/）から取る。
+     こうすると全店舗でコードが1本のまま、店舗別に数えられる。
+     ・リンクには UTM を付ける → 自社サイト側の解析で流入元が分かる
+     ・GA4(G-1RZWP9PNCS) には studio_link_click を送る → サンプル側でクリック数が分かる
+     JS が動かなくても href は素のURLのままなので、リンクとしては壊れない。 */
+  var slug = location.pathname.split('/').filter(Boolean)[0] || location.hostname || 'local';
+  var utm = function (medium) {
+    return 'https://suzumedesign.com/?utm_source=salon-sample&utm_medium=' + medium +
+           '&utm_campaign=salon-sample&utm_content=' + encodeURIComponent(slug);
+  };
+  var track = function (el, placement) {
+    if (!el) { return; }
+    el.href = utm(placement);
+    el.addEventListener('click', function () {
+      if (typeof gtag === 'function') {
+        gtag('event', 'studio_link_click', { placement: placement, salon: slug });
+      }
+    });
+  };
+  track(bar, 'sitebar');
+  track(btn, 'footer');
+
   /* 出入りの判定。scroll イベントだけに頼ると取りこぼすので
      IntersectionObserver を主にし、スクロール位置の判定を保険に置く */
   var foot = document.querySelector('footer') || band;
